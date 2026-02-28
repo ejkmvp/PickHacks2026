@@ -1,0 +1,12 @@
+Our goal is to make an embedded device that can be mounted to any moving vehicle (scooter, car, bike, etc). Then, using the BNO086 and a GPS (which I don't have, so we'll simulate one for now), the device can detect potholes based on accelerations. Then, those potholes are reported back to a central server, which is accessible VIA a wifi network the esp32 is connected to. Here is a detailed, but not fully complete, list of requirements:
+
+1. The device will constantly attempt to connect to some pre-determined wifi network
+2. Is connection to the network is dropped, it will periodically try again without interrupting the rest of the code
+3. When a connection is established, the current time will be pulled from a custom backend I will define later
+4. The program will use the BNO086 to detect sudden drops from potholes. Based on the data, it should rate the severity of the pothole as a score from 1 to 100
+5. The program will use the BNO086 to enforce a tilt lockout so that, if the bike is falling or has fallen over, then we don't get false positives
+6. If there are any other false-positive measures you see fit, please use those
+7. When a pothole is recorded, it will store the recording in a local buffer
+8. When the wifi network is established, it will securly send the recordings in the buffer to the server. Some sort of handshaking protocol should be used so that, if the connection fails, the recording remain in the buffer until the transfer succeeds.
+9. The buffer will be fixed size, and if it is fulll, new recording will simply be ignored
+10. Since we don't have a GPS, We'll have a button activate a procedure that simulates some sort of predetermined path

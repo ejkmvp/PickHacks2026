@@ -1,0 +1,31 @@
+#pragma once
+#include <Arduino.h>
+#include "config.h"
+
+struct GpsPoint {
+    float latitude;
+    float longitude;
+};
+
+// Simulates GPS by advancing through a hardcoded path on a timer.
+// Press the button to start; press again to stop early.
+class GpsSim {
+public:
+    void  begin();
+    void  update();
+
+    float latitude()  const { return _active ? _path[_idx].latitude  : 0.0f; }
+    float longitude() const { return _active ? _path[_idx].longitude : 0.0f; }
+    bool  active()    const { return _active; }
+
+private:
+    bool     _active      = false;
+    int      _idx         = 0;
+    uint32_t _lastAdvance = 0;
+    bool     _lastBtn     = HIGH;   // pulled HIGH; active LOW
+
+    static const GpsPoint _path[];
+    static const int      _pathLen;
+};
+
+extern GpsSim gpsSim;
