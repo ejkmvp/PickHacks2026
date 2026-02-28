@@ -2,7 +2,7 @@ DATABASE_PATH = "potholes.db"
 
 DEFAULTS = {
     "clustering_radius_m":      "15.0",
-    "search_radius_m":          "500.0",
+    "search_radius_m":          "1500.0",
     "spam_cooldown_s":          "3600",
     "score_w_unique_reporters": "0.25",
     "score_w_total_reports":    "0.20",

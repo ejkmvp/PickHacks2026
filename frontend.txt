@@ -1,0 +1,69 @@
+Frontend Requirements
+=====================
+
+Stack
+-----
+- Plain HTML/CSS/JS — no build tool, no framework
+- Leaflet.js for the map (loaded from CDN)
+- OpenStreetMap tiles (no API key required)
+- Flask serves all static files from backend/static/
+
+File layout
+-----------
+backend/static/
+    index.html      public map page
+    admin.html      admin-only page
+    map.js          shared Leaflet init, refresh logic, marker rendering
+
+Public map page (index.html)
+-----------------------------
+- Full-viewport Leaflet map, no other chrome
+- Zoom-based pothole loading:
+    - Fire GET /api/potholes?lat=&lon= on map moveend/zoomend (300 ms debounce)
+    - Only fetch when zoom >= 14; clear all markers when zoomed out past that threshold
+    - Radius controlled by the backend search_radius_m setting (default raised to ~1500 m)
+- Markers rendered as circle markers:
+    - Color by score: green (<40), orange (40-69), red (>=70)
+    - Radius scales with report_count (base 6 px + small increment, visually capped)
+    - Click opens a popup: score, report count, unique device count, last-seen date
+- No login, no admin controls visible
+
+Admin page (admin.html)
+-----------------------
+- On page load, prompt for admin API key; store in sessionStorage
+    - All admin fetch calls include X-API-Key header
+    - If any request returns 403, re-prompt and clear sessionStorage
+- Same Leaflet map as public page (shared map.js logic)
+- Admin marker popups have two extra buttons: "Mark Fixed" and "Mark False Positive"
+    - "Mark Fixed"          → POST /api/potholes/<id>/fixed
+    - "Mark False Positive" → POST /api/potholes/<id>/false-positive
+    - Both remove the marker from the map on success without a full reload
+- Settings panel (collapsible sidebar or bottom drawer):
+    - Fetches GET /api/settings on open
+    - Displays each setting as a labeled input field
+    - Single "Save" button → PUT /api/settings with changed values only
+    - Show inline success/error feedback per field
+- Device registration section (same panel or separate tab):
+    - Text input for device label
+    - "Register" button → POST /api/devices/register
+    - Display generated API key in a copyable text box after success
+
+Flask routes to add (app.py)
+-----------------------------
+- GET /         → serve static/index.html
+- GET /admin    → serve static/admin.html
+- GET /static/<path> already handled by Flask's built-in static file serving
+    (move static files into backend/static/ and set static_folder accordingly)
+
+Open questions / things to decide before implementation
+--------------------------------------------------------
+- Map default center and zoom on first load (hardcode to event venue? use browser geolocation?)
+	Answer: Hardcode to certain location
+- Should the public page show a "zoom in to see potholes" hint when zoom < 14?
+	Answer: Yes
+- Does the admin page need a logout button, or is closing the tab sufficient?
+	Answer: Closing the tab is sufficient
+- Should marker popups on the public page show a severity label (Minor/Moderate/Severe) in addition to the raw score?
+	Answer: The public page should show severity instead of raw score
+- Any branding, color scheme, or title preferences?
+	Answer: None, but choose something unique and stick with it.

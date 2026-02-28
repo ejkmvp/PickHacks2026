@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CraterWatch — Admin</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, sans-serif; }
+
+        /* ---- Header ---- */
+        #header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 48px;
+            background: #1e293b;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 8px;
+            z-index: 1000;
+        }
+        #header h1 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .admin-badge {
+            background: #3b82f6;
+            color: #fff;
+            font-size: 0.62rem;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 4px;
+            letter-spacing: 0.08em;
+        }
+        #panel-toggle {
+            margin-left: auto;
+            background: #334155;
+            border: none;
+            color: #f8fafc;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.84rem;
+            font-weight: 600;
+            transition: background 0.15s;
+        }
+        #panel-toggle:hover { background: #475569; }
+
+        /* ---- Map ---- */
+        #map {
+            position: fixed;
+            top: 48px; left: 0; right: 0; bottom: 0;
+            transition: right 0.2s ease;
+        }
+        #map.panel-open { right: 340px; }
+
+        #zoom-hint {
+            position: absolute;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(30, 41, 59, 0.88);
+            color: #f8fafc;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            pointer-events: none;
+            z-index: 500;
+            white-space: nowrap;
+        }
+
+        /* ---- Sidebar ---- */
+        #panel {
+            position: fixed;
+            top: 48px; right: 0; bottom: 0;
+            width: 0;
+            background: #f1f5f9;
+            border-left: 1px solid #e2e8f0;
+            overflow: hidden;
+            transition: width 0.2s ease;
+            z-index: 900;
+        }
+        #panel.open { width: 340px; }
+        #panel-inner {
+            width: 340px;
+            height: 100%;
+            overflow-y: auto;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* ---- Cards ---- */
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .card h2 {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 12px;
+        }
+
+        /* ---- Form elements ---- */
+        .field { margin-bottom: 8px; }
+        .field:last-of-type { margin-bottom: 0; }
+        .field label {
+            display: block;
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 3px;
+        }
+        .field input {
+            width: 100%;
+            padding: 6px 9px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.84rem;
+            color: #1e293b;
+            background: #f8fafc;
+        }
+        .field input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 7px 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.84rem;
+            font-weight: 600;
+            transition: background 0.15s;
+        }
+        .btn-primary { background: #3b82f6; color: #fff; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-block { width: 100%; margin-top: 10px; }
+
+        .notice {
+            margin-top: 10px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            display: none;
+        }
+        .notice.ok  { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .notice.err { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+        /* ---- Auth overlay ---- */
+        #auth-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.88);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        #auth-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 32px;
+            width: 320px;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+        }
+        #auth-card h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+        #auth-card p {
+            font-size: 0.84rem;
+            color: #64748b;
+            margin-bottom: 16px;
+        }
+        #auth-key {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.84rem;
+            color: #1e293b;
+        }
+        #auth-key:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+        }
+        #auth-error {
+            font-size: 0.8rem;
+            color: #991b1b;
+            margin-top: 8px;
+            min-height: 18px;
+        }
+
+        /* ---- Popup action buttons ---- */
+        .popup-row {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .popup-btn {
+            flex: 1;
+            padding: 5px 6px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.77rem;
+            font-weight: 700;
+            transition: background 0.15s;
+        }
+        .popup-btn-fixed { background: #dcfce7; color: #166534; }
+        .popup-btn-fixed:hover { background: #bbf7d0; }
+        .popup-btn-fp    { background: #fef3c7; color: #92400e; }
+        .popup-btn-fp:hover    { background: #fde68a; }
+    </style>
+</head>
+<body>
+
+<!-- Auth overlay -->
+<div id="auth-overlay">
+    <div id="auth-card">
+        <h2>CraterWatch Admin</h2>
+        <p>Enter your admin API key to continue.</p>
+        <input type="password" id="auth-key" placeholder="Admin API key" autocomplete="off" />
+        <div id="auth-error"></div>
+        <button class="btn btn-primary btn-block" id="auth-submit">Sign in</button>
+    </div>
+</div>
+
+<div id="header">
+    <h1>CraterWatch</h1>
+    <span class="admin-badge">ADMIN</span>
+    <button id="panel-toggle">Panel &#9656;</button>
+</div>
+
+<div id="map">
+    <div id="zoom-hint">Zoom in to see potholes</div>
+</div>
+
+<div id="panel">
+    <div id="panel-inner">
+
+        <div class="card" id="settings-card">
+            <h2>Settings</h2>
+            <div id="settings-fields"><em style="font-size:0.82rem;color:#94a3b8">Loading…</em></div>
+            <button class="btn btn-primary btn-block" id="settings-save">Save Changes</button>
+            <div class="notice" id="settings-notice"></div>
+        </div>
+
+        <div class="card">
+            <h2>Register Device</h2>
+            <div class="field">
+                <label for="device-label">Device Label</label>
+                <input type="text" id="device-label" placeholder="e.g. Bike 01" />
+            </div>
+            <button class="btn btn-primary btn-block" id="device-register">Register</button>
+            <div class="notice" id="device-notice"></div>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/map.js"></script>
+<script>
+"use strict";
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+const STORAGE_KEY   = "cw_admin_key";
+let   adminKey      = sessionStorage.getItem(STORAGE_KEY) || "";
+
+const authOverlay   = document.getElementById("auth-overlay");
+const authKeyInput  = document.getElementById("auth-key");
+const authError     = document.getElementById("auth-error");
+const authSubmit    = document.getElementById("auth-submit");
+
+function showAuthOverlay(msg) {
+    authError.textContent = msg || "";
+    authKeyInput.value    = "";
+    authOverlay.style.display = "flex";
+    setTimeout(() => authKeyInput.focus(), 50);
+}
+
+async function tryAuth(key) {
+    authError.textContent = "";
+    try {
+        const res = await fetch("/api/settings", {
+            headers: { "X-API-Key": key },
+        });
+        if (res.ok) {
+            adminKey = key;
+            sessionStorage.setItem(STORAGE_KEY, key);
+            authOverlay.style.display = "none";
+            const data = await res.json();
+            renderSettings(data);
+        } else {
+            showAuthOverlay("Invalid key — please try again.");
+        }
+    } catch {
+        showAuthOverlay("Could not reach server.");
+    }
+}
+
+authSubmit.addEventListener("click", () => {
+    const k = authKeyInput.value.trim();
+    if (k) tryAuth(k);
+});
+authKeyInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") authSubmit.click();
+});
+
+if (adminKey) {
+    tryAuth(adminKey);
+} else {
+    authOverlay.style.display = "flex";
+}
+
+// ---------------------------------------------------------------------------
+// Admin fetch wrapper — re-prompts on 403
+// ---------------------------------------------------------------------------
+async function adminFetch(url, options = {}) {
+    const res = await fetch(url, {
+        ...options,
+        headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": adminKey,
+            ...(options.headers || {}),
+        },
+    });
+    if (res.status === 403) {
+        sessionStorage.removeItem(STORAGE_KEY);
+        adminKey = "";
+        showAuthOverlay("Session expired — please sign in again.");
+        throw new Error("Unauthorized");
+    }
+    return res;
+}
+
+// ---------------------------------------------------------------------------
+// Map
+// ---------------------------------------------------------------------------
+const map         = CraterWatch.initMap("map");
+const markerLayer = L.layerGroup().addTo(map);
+const mapEl       = document.getElementById("map");
+const hint        = document.getElementById("zoom-hint");
+let   debounce;
+
+// Track markers by cluster id so we can remove them without a full reload
+const markerById = new Map();
+
+function removeMarkerById(id) {
+    const m = markerById.get(id);
+    if (m) { markerLayer.removeLayer(m); markerById.delete(id); }
+}
+
+// Global handlers for popup buttons (called via inline onclick)
+window.cwMarkFixed = async (id) => {
+    if (!confirm("Mark this cluster as fixed and delete it?")) return;
+    try {
+        const res = await adminFetch(`/api/potholes/${id}/fixed`, { method: "POST" });
+        if (res.ok) removeMarkerById(id);
+    } catch { /* handled by adminFetch */ }
+};
+
+window.cwMarkFP = async (id) => {
+    if (!confirm("Mark as false positive? Scoring weights will be nudged.")) return;
+    try {
+        const res = await adminFetch(`/api/potholes/${id}/false-positive`, { method: "POST" });
+        if (res.ok) removeMarkerById(id);
+    } catch { /* handled by adminFetch */ }
+};
+
+function buildAdminPopup(c) {
+    const label = CraterWatch.severityLabel(c.score);
+    const color = CraterWatch.scoreColor(c.score);
+    const date  = new Date(c.last_seen * 1000).toLocaleDateString();
+    const rPlur = c.report_count     !== 1 ? "s" : "";
+    const dPlur = c.unique_reporters !== 1 ? "s" : "";
+    return `<div style="line-height:1.6;min-width:170px">
+        <strong style="color:${color}">${label}</strong> &mdash; score ${c.score.toFixed(0)}<br>
+        ${c.report_count} report${rPlur} &middot; ${c.unique_reporters} device${dPlur}<br>
+        <small style="color:#64748b">Last reported ${date}</small>
+        <div class="popup-row">
+            <button class="popup-btn popup-btn-fixed" onclick="cwMarkFixed(${c.id})">Mark Fixed</button>
+            <button class="popup-btn popup-btn-fp"    onclick="cwMarkFP(${c.id})">False Positive</button>
+        </div>
+    </div>`;
+}
+
+async function refresh() {
+    markerLayer.clearLayers();
+    markerById.clear();
+    if (map.getZoom() < CraterWatch.LOAD_ZOOM) {
+        hint.style.display = "block";
+        return;
+    }
+    hint.style.display = "none";
+    const { lat, lng } = map.getCenter();
+    try {
+        const clusters = await CraterWatch.fetchPotholes(lat, lng, adminKey || undefined);
+        clusters.forEach(c => {
+            const m = L.circleMarker([c.lat, c.lon], {
+                radius:      Math.min(6 + c.report_count * 0.5, 16),
+                color:       CraterWatch.scoreColor(c.score),
+                fillColor:   CraterWatch.scoreColor(c.score),
+                fillOpacity: 0.75,
+                weight:      2,
+            }).bindPopup(buildAdminPopup(c));
+            m.addTo(markerLayer);
+            markerById.set(c.id, m);
+        });
+    } catch (e) {
+        console.error("Failed to fetch potholes:", e);
+    }
+}
+
+map.on("moveend zoomend", () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(refresh, 300);
+});
+
+refresh();
+
+// ---------------------------------------------------------------------------
+// Sidebar panel toggle
+// ---------------------------------------------------------------------------
+const panel      = document.getElementById("panel");
+const toggleBtn  = document.getElementById("panel-toggle");
+let panelOpen    = false;
+
+toggleBtn.addEventListener("click", () => {
+    panelOpen = !panelOpen;
+    panel.classList.toggle("open", panelOpen);
+    mapEl.classList.toggle("panel-open", panelOpen);
+    toggleBtn.innerHTML = panelOpen ? "Panel &#9666;" : "Panel &#9656;";
+    // Let the CSS transition finish before Leaflet recalculates the viewport
+    setTimeout(() => map.invalidateSize(), 210);
+});
+
+// ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+let loadedSettings = {};
+
+function renderSettings(data) {
+    loadedSettings = data;
+    const container = document.getElementById("settings-fields");
+    container.innerHTML = Object.entries(data)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => `
+            <div class="field">
+                <label>${k}</label>
+                <input type="number" step="any" data-key="${k}" value="${v}" />
+            </div>
+        `).join("");
+}
+
+document.getElementById("settings-save").addEventListener("click", async () => {
+    const inputs  = document.querySelectorAll("#settings-fields input[data-key]");
+    const changed = {};
+    inputs.forEach(inp => {
+        if (inp.value !== String(loadedSettings[inp.dataset.key])) {
+            changed[inp.dataset.key] = inp.value;
+        }
+    });
+
+    const notice = document.getElementById("settings-notice");
+    if (!Object.keys(changed).length) {
+        flash(notice, "No changes to save.", false);
+        return;
+    }
+    try {
+        const res  = await adminFetch("/api/settings", {
+            method: "PUT",
+            body: JSON.stringify(changed),
+        });
+        const data = await res.json();
+        Object.assign(loadedSettings, data.updated);
+        const n = Object.keys(data.updated).length;
+        const e = Object.keys(data.errors || {}).length;
+        const msg = e
+            ? `${n} saved, ${e} error(s): ${Object.keys(data.errors).join(", ")}`
+            : `${n} setting${n !== 1 ? "s" : ""} saved.`;
+        flash(notice, msg, e > 0);
+    } catch { /* handled */ }
+});
+
+// ---------------------------------------------------------------------------
+// Device registration
+// ---------------------------------------------------------------------------
+document.getElementById("device-register").addEventListener("click", async () => {
+    const label  = document.getElementById("device-label").value.trim();
+    const notice = document.getElementById("device-notice");
+    try {
+        const res = await adminFetch("/api/devices/register", {
+            method: "POST",
+            body: JSON.stringify({ label }),
+        });
+        if (res.ok) {
+            const data = await res.json();
+            notice.className = "notice ok";
+            notice.innerHTML = `Device registered.<br>
+                <strong>API Key</strong> (copy now — not shown again):<br>
+                <code style="word-break:break-all;font-size:0.78rem;user-select:all">${data.api_key}</code>`;
+            notice.style.display = "block";
+            document.getElementById("device-label").value = "";
+        } else {
+            flash(notice, "Registration failed.", true);
+        }
+    } catch { /* handled */ }
+});
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function flash(el, msg, isErr) {
+    el.className = "notice " + (isErr ? "err" : "ok");
+    el.textContent = msg;
+    el.style.display = "block";
+    setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+</script>
+</body>
+</html>

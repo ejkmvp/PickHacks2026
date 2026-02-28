@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CraterWatch</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, sans-serif; }
+
+        #header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 48px;
+            background: #1e293b;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            z-index: 1000;
+        }
+
+        #header h1 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .legend {
+            margin-left: auto;
+            display: flex;
+            gap: 14px;
+            font-size: 0.78rem;
+            color: #cbd5e1;
+        }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+        #map {
+            position: fixed;
+            top: 48px; left: 0; right: 0; bottom: 0;
+        }
+
+        #zoom-hint {
+            position: absolute;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(30, 41, 59, 0.88);
+            color: #f8fafc;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            pointer-events: none;
+            z-index: 500;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+
+<div id="header">
+    <h1>CraterWatch</h1>
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-dot" style="background:#22c55e"></div>Minor
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot" style="background:#f97316"></div>Moderate
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot" style="background:#ef4444"></div>Severe
+        </div>
+    </div>
+</div>
+
+<div id="map">
+    <div id="zoom-hint">Zoom in to see potholes</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/map.js"></script>
+<script>
+    "use strict";
+
+    const map         = CraterWatch.initMap("map");
+    const markerLayer = L.layerGroup().addTo(map);
+    const hint        = document.getElementById("zoom-hint");
+    let debounce;
+
+    function buildPopup(c) {
+        const label  = CraterWatch.severityLabel(c.score);
+        const color  = CraterWatch.scoreColor(c.score);
+        const date   = new Date(c.last_seen * 1000).toLocaleDateString();
+        const rPlur  = c.report_count     !== 1 ? "s" : "";
+        const dPlur  = c.unique_reporters !== 1 ? "s" : "";
+        return `<div style="line-height:1.6;min-width:150px">
+            <strong style="color:${color}">${label}</strong> pothole<br>
+            ${c.report_count} report${rPlur} &middot; ${c.unique_reporters} device${dPlur}<br>
+            <small style="color:#64748b">Last reported ${date}</small>
+        </div>`;
+    }
+
+    async function refresh() {
+        markerLayer.clearLayers();
+        if (map.getZoom() < CraterWatch.LOAD_ZOOM) {
+            hint.style.display = "block";
+            return;
+        }
+        hint.style.display = "none";
+        const { lat, lng } = map.getCenter();
+        try {
+            const clusters = await CraterWatch.fetchPotholes(lat, lng);
+            clusters.forEach(c => {
+                L.circleMarker([c.lat, c.lon], {
+                    radius:      Math.min(6 + c.report_count * 0.5, 16),
+                    color:       CraterWatch.scoreColor(c.score),
+                    fillColor:   CraterWatch.scoreColor(c.score),
+                    fillOpacity: 0.75,
+                    weight:      2,
+                }).bindPopup(buildPopup(c)).addTo(markerLayer);
+            });
+        } catch (e) {
+            console.error("Failed to fetch potholes:", e);
+        }
+    }
+
+    map.on("moveend zoomend", () => {
+        clearTimeout(debounce);
+        debounce = setTimeout(refresh, 300);
+    });
+
+    // Run once on load so the hint shows at the initial zoom level
+    refresh();
+</script>
+</body>
+</html>

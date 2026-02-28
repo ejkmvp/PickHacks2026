@@ -3,7 +3,7 @@ import secrets
 import time
 from functools import wraps
 
-from flask import Flask, g, jsonify, request, abort
+from flask import Flask, g, jsonify, request, abort, send_from_directory
 
 import db as _db
 import scoring
@@ -72,6 +72,16 @@ def require_admin_auth(f):
 # ---------------------------------------------------------------------------
 # Public endpoints
 # ---------------------------------------------------------------------------
+
+@app.get("/")
+def index():
+    return send_from_directory("static", "index.html")
+
+
+@app.get("/admin")
+def admin_page():
+    return send_from_directory("static", "admin.html")
+
 
 @app.get("/api/time")
 def get_time():
