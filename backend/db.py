@@ -137,6 +137,38 @@ def invalidate_settings_cache(conn):
 # Core ingestion transaction
 # ---------------------------------------------------------------------------
 
+def recompute_all_scores(conn):
+    """Recompute and persist scores for every cluster using current settings/weights."""
+    import scoring  # local import to avoid circular at module load
+
+    clusters = conn.execute(
+        """
+        SELECT id, unique_reporters, report_count, avg_severity, severity_variance
+        FROM   pothole_clusters
+        """
+    ).fetchall()
+
+    for c in clusters:
+        timestamps = [
+            r[0] for r in conn.execute(
+                "SELECT timestamp FROM reports WHERE cluster_id = ? AND is_counted = 1",
+                (c["id"],),
+            ).fetchall()
+        ]
+        new_score = scoring.compute_score(
+            unique_reporters=c["unique_reporters"],
+            total_reports=c["report_count"],
+            avg_severity=c["avg_severity"],
+            severity_variance=c["severity_variance"],
+            report_timestamps=timestamps,
+        )
+        conn.execute(
+            "UPDATE pothole_clusters SET score = ? WHERE id = ?",
+            (new_score, c["id"]),
+        )
+    conn.commit()
+
+
 def process_report(conn, device_db_id, lat, lon, severity, timestamp, received_at):
     """
     Find-or-create cluster, spam-check, insert report, update cluster stats.

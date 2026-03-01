@@ -97,7 +97,7 @@
         const rPlur  = c.report_count     !== 1 ? "s" : "";
         const dPlur  = c.unique_reporters !== 1 ? "s" : "";
         return `<div style="line-height:1.6;min-width:150px">
-            <strong style="color:${color}">${label}</strong> pothole<br>
+            <strong style="color:${color}">${label}</strong> &mdash; score ${c.score.toFixed(0)}<br>
             ${c.report_count} report${rPlur} &middot; ${c.unique_reporters} device${dPlur}<br>
             <small style="color:#64748b">Last reported ${date}</small>
         </div>`;

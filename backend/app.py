@@ -230,9 +230,16 @@ def update_settings():
         )
         updated[key] = str(value)
 
+    _SCORE_KEYS = {
+        "score_w_unique_reporters", "score_w_total_reports", "score_w_avg_severity",
+        "score_w_recency", "score_w_consistency", "score_decay_lambda",
+    }
+
     if updated:
         g.db.commit()
         _db.invalidate_settings_cache(g.db)
+        if updated.keys() & _SCORE_KEYS:
+            _db.recompute_all_scores(g.db)
 
     return jsonify({"updated": updated, "errors": errors})
 
@@ -269,6 +276,7 @@ def mark_false_positive(cluster_id):
 
     # Nudge weights before deleting so the feature vector is still accessible
     scoring.apply_false_positive_nudge(cluster_id, g.db)
+    _db.recompute_all_scores(g.db)
 
     with g.db:
         g.db.execute(

@@ -132,7 +132,11 @@ def apply_false_positive_nudge(cluster_id, conn):
         for w, f in zip(weights, features)
     ]
 
+    _FIXED_WEIGHTS = {"score_w_avg_severity"}
+
     for key, new_val in zip(_WEIGHT_KEYS, new_weights):
+        if key in _FIXED_WEIGHTS:
+            continue
         conn.execute(
             "INSERT OR REPLACE INTO settings(key, value) VALUES (?, ?)",
             (key, str(new_val)),
