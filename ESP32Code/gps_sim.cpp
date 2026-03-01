@@ -17,7 +17,7 @@ const int GpsSim::_pathLen = sizeof(GpsSim::_path) / sizeof(GpsSim::_path[0]);
 GpsSim gpsSim;
 
 void GpsSim::begin() {
-    pinMode(GPS_SIM_BUTTON_PIN, INPUT_PULLUP);
+    pinMode(GPS_SIM_BUTTON_PIN, INPUT);
 }
 
 void GpsSim::update() {

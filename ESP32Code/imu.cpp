@@ -20,7 +20,7 @@ ImuSensor imu;
 
 bool ImuSensor::begin() {
     SPI.begin();   // VSPI defaults: SCK=18, MISO=19, MOSI=23
-    if (!_bno.beginSPI(BNO_CS, BNO_INT, SPI)) {
+    if (!_bno.beginSPI(BNO_CS, BNO_INT, BNO_RST)) {
         Serial.println("[IMU] BNO086 not found — check wiring and pin constants");
         return false;
     }
@@ -59,23 +59,22 @@ uint8_t ImuSensor::computeScore(float peakDown, float peakUp) const {
 void ImuSensor::update(EventBuffer& buffer, float lat, float lon) {
     if (_bno.wasReset()) setupReports();
 
-    sh2_SensorValue_t val;
-    while (_bno.getSensorEvent(&val)) {
+    while (_bno.getSensorEvent()) {
 
-        switch (val.sensorId) {
+        switch (_bno.getSensorEventID()) {
 
             // ── Update gravity vector (used for tilt and axis projection) ───
             case SH2_GRAVITY:
-                _gravX = val.un.gravity.x;
-                _gravY = val.un.gravity.y;
-                _gravZ = val.un.gravity.z;
+                _gravX = _bno.getGravityX();
+                _gravY = _bno.getGravityY();
+                _gravZ = _bno.getGravityZ();
                 break;
 
             // ── Pothole detection ───────────────────────────────────────────
             case SH2_LINEAR_ACCELERATION: {
-                float ax = val.un.linearAcceleration.x;
-                float ay = val.un.linearAcceleration.y;
-                float az = val.un.linearAcceleration.z;
+                float ax = _bno.getLinAccelX();
+                float ay = _bno.getLinAccelY();
+                float az = _bno.getLinAccelZ();
                 float linMag = sqrtf(ax * ax + ay * ay + az * az);
 
                 // Project linear acceleration onto the gravity (down) direction.

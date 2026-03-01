@@ -11,7 +11,7 @@ from config import DEFAULTS
 
 app = Flask(__name__)
 
-ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "")
+ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "admin")
 
 
 # ---------------------------------------------------------------------------
@@ -81,6 +81,11 @@ def index():
 @app.get("/admin")
 def admin_page():
     return send_from_directory("static", "admin.html")
+
+
+@app.get("/sim")
+def sim_page():
+    return send_from_directory("static", "simulation.html")
 
 
 @app.get("/api/time")
@@ -170,6 +175,15 @@ def ingest_potholes():
 # ---------------------------------------------------------------------------
 # Admin endpoints
 # ---------------------------------------------------------------------------
+
+@app.get("/api/devices")
+@require_admin_auth
+def list_devices():
+    rows = g.db.execute(
+        "SELECT id, label, created_at, is_active FROM devices ORDER BY created_at DESC"
+    ).fetchall()
+    return jsonify([dict(r) for r in rows])
+
 
 @app.post("/api/devices/register")
 @require_admin_auth
@@ -269,6 +283,51 @@ def mark_false_positive(cluster_id):
 
 
 # ---------------------------------------------------------------------------
+# Simulation endpoints (no auth — internal / demo tooling only)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/sim/devices")
+def sim_list_devices():
+    rows = g.db.execute(
+        "SELECT id, label FROM devices WHERE is_active = 1 ORDER BY label"
+    ).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.post("/api/simulate")
+def simulate_report():
+    body = request.get_json(silent=True) or {}
+    try:
+        device_id = int(body["device_id"])
+        lat       = float(body["latitude"])
+        lon       = float(body["longitude"])
+        score     = max(1, min(100, int(body.get("score", 50))))
+        timestamp = int(body.get("timestamp", int(time.time())))
+    except (KeyError, TypeError, ValueError) as exc:
+        abort(400, description=f"Invalid parameters: {exc}")
+
+    if not (-90.0 <= lat <= 90.0) or not (-180.0 <= lon <= 180.0):
+        abort(400, description="Coordinates out of range")
+
+    row = g.db.execute(
+        "SELECT id FROM devices WHERE id = ? AND is_active = 1", (device_id,)
+    ).fetchone()
+    if row is None:
+        abort(404, description="Device not found or inactive")
+
+    _, is_counted = _db.process_report(
+        g.db,
+        device_db_id=row["id"],
+        lat=lat,
+        lon=lon,
+        severity=score,
+        timestamp=timestamp,
+        received_at=int(time.time()),
+    )
+    return jsonify({"accepted": int(is_counted), "spam_rejected": int(not is_counted)})
+
+
+# ---------------------------------------------------------------------------
 # Error handlers
 # ---------------------------------------------------------------------------
 
@@ -286,4 +345,4 @@ def handle_error(e):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(host="192.168.137.1", port=5000, debug=False, ssl_context=("cert.pem", "key.pem"))

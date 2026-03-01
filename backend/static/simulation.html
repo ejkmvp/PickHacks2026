@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CraterWatch — Simulation</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, sans-serif; }
+
+        /* ---- Header ---- */
+        #header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 48px;
+            background: #1e293b;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 8px;
+            z-index: 1000;
+        }
+        #header h1 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .sim-badge {
+            background: #a855f7;
+            color: #fff;
+            font-size: 0.62rem;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 4px;
+            letter-spacing: 0.08em;
+        }
+        #header-hint {
+            margin-left: auto;
+            font-size: 0.78rem;
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        /* ---- Map ---- */
+        #map {
+            position: fixed;
+            top: 48px; left: 0;
+            right: 340px; bottom: 0;
+        }
+
+        #zoom-hint {
+            position: absolute;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(30, 41, 59, 0.88);
+            color: #f8fafc;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            pointer-events: none;
+            z-index: 500;
+            white-space: nowrap;
+        }
+
+        /* ---- Sidebar ---- */
+        #panel {
+            position: fixed;
+            top: 48px; right: 0; bottom: 0;
+            width: 340px;
+            background: #f1f5f9;
+            border-left: 1px solid #e2e8f0;
+            overflow-y: auto;
+            z-index: 900;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* ---- Cards ---- */
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .card h2 {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 12px;
+        }
+
+        /* ---- Form elements ---- */
+        .field { margin-bottom: 10px; }
+        .field:last-of-type { margin-bottom: 0; }
+        .field label {
+            display: block;
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 3px;
+        }
+        .field input, .field select {
+            width: 100%;
+            padding: 6px 9px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.84rem;
+            color: #1e293b;
+            background: #f8fafc;
+        }
+        .field input:focus, .field select:focus {
+            outline: none;
+            border-color: #a855f7;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(168,85,247,0.12);
+        }
+
+        /* ---- Score row ---- */
+        .score-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .score-row input[type="range"] {
+            flex: 1;
+            padding: 0;
+            border: none;
+            background: none;
+            accent-color: #a855f7;
+        }
+        .score-row input[type="number"] {
+            width: 58px;
+            flex-shrink: 0;
+            text-align: center;
+        }
+        .severity-badge {
+            font-size: 0.68rem;
+            font-weight: 800;
+            padding: 3px 7px;
+            border-radius: 4px;
+            letter-spacing: 0.06em;
+            white-space: nowrap;
+        }
+        .sev-minor    { background: #dcfce7; color: #166534; }
+        .sev-moderate { background: #ffedd5; color: #9a3412; }
+        .sev-severe   { background: #fee2e2; color: #991b1b; }
+
+        /* ---- Coord row ---- */
+        .coord-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        /* ---- Buttons ---- */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.84rem;
+            font-weight: 600;
+            transition: background 0.15s;
+        }
+        .btn-sim  { background: #a855f7; color: #fff; width: 100%; margin-top: 12px; }
+        .btn-sim:hover { background: #9333ea; }
+        .btn-sim:disabled { background: #d8b4fe; cursor: not-allowed; }
+
+        /* ---- Notice ---- */
+        .notice {
+            margin-top: 10px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            display: none;
+        }
+        .notice.ok  { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .notice.err { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .notice.warn { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+
+        /* ---- Log ---- */
+        #log-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            font-size: 0.78rem;
+            padding: 7px 9px;
+            border-radius: 6px;
+            line-height: 1.5;
+            border-left: 3px solid;
+        }
+        .log-ok   { background: #f0fdf4; border-color: #22c55e; color: #166534; }
+        .log-warn { background: #fffbeb; border-color: #f59e0b; color: #92400e; }
+        .log-err  { background: #fef2f2; border-color: #ef4444; color: #991b1b; }
+        .log-empty { font-size: 0.82rem; color: #94a3b8; font-style: italic; }
+
+        /* ---- Click hint ---- */
+        #click-hint {
+            font-size: 0.78rem;
+            color: #a855f7;
+            margin-top: 6px;
+            text-align: center;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<div id="header">
+    <h1>CraterWatch</h1>
+    <span class="sim-badge">SIM</span>
+    <span id="header-hint">Click the map to place a report</span>
+</div>
+
+<div id="map">
+    <div id="zoom-hint">Zoom in to see existing potholes</div>
+</div>
+
+<div id="panel">
+
+    <div class="card">
+        <h2>Place Report</h2>
+
+        <div class="field">
+            <label for="device-select">Device</label>
+            <select id="device-select">
+                <option value="">Loading devices…</option>
+            </select>
+        </div>
+
+        <div class="field">
+            <label>Score (1 – 100)</label>
+            <div class="score-row">
+                <input type="range" id="score-slider" min="1" max="100" value="50" />
+                <input type="number" id="score-num" min="1" max="100" value="50" />
+                <span class="severity-badge sev-moderate" id="sev-badge">Moderate</span>
+            </div>
+        </div>
+
+        <div class="field">
+            <label>Coordinates <span id="click-hint">(click map to place)</span></label>
+            <div class="coord-row">
+                <input type="number" id="lat-input" step="any" placeholder="Latitude" />
+                <input type="number" id="lon-input" step="any" placeholder="Longitude" />
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="ts-input">Timestamp</label>
+            <input type="datetime-local" id="ts-input" />
+        </div>
+
+        <button class="btn btn-sim" id="submit-btn">Submit Report</button>
+        <div class="notice" id="submit-notice"></div>
+    </div>
+
+    <div class="card">
+        <h2>Submission Log</h2>
+        <div id="log-list">
+            <span class="log-empty">No submissions yet.</span>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/map.js"></script>
+<script>
+"use strict";
+
+// ---------------------------------------------------------------------------
+// Map setup
+// ---------------------------------------------------------------------------
+const map         = CraterWatch.initMap("map");
+const potholeLayer = L.layerGroup().addTo(map);
+const hint        = document.getElementById("zoom-hint");
+let   pinMarker   = null;
+let   debounce;
+
+// ---------------------------------------------------------------------------
+// Existing potholes (background context, no auth)
+// ---------------------------------------------------------------------------
+async function refreshPotholes() {
+    potholeLayer.clearLayers();
+    if (map.getZoom() < CraterWatch.LOAD_ZOOM) {
+        hint.style.display = "block";
+        return;
+    }
+    hint.style.display = "none";
+    const { lat, lng } = map.getCenter();
+    try {
+        const clusters = await CraterWatch.fetchPotholes(lat, lng);
+        clusters.forEach(c => {
+            L.circleMarker([c.lat, c.lon], {
+                radius:      Math.min(6 + c.report_count * 0.5, 16),
+                color:       CraterWatch.scoreColor(c.score),
+                fillColor:   CraterWatch.scoreColor(c.score),
+                fillOpacity: 0.5,
+                weight:      2,
+            }).bindPopup(`<strong>${CraterWatch.severityLabel(c.score)}</strong> — score ${c.score.toFixed(0)}<br>
+                <small>${c.report_count} report(s)</small>`).addTo(potholeLayer);
+        });
+    } catch (e) {
+        console.warn("Could not load potholes:", e);
+    }
+}
+
+map.on("moveend zoomend", () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(refreshPotholes, 300);
+});
+refreshPotholes();
+
+// ---------------------------------------------------------------------------
+// Click-to-place pin
+// ---------------------------------------------------------------------------
+const latInput = document.getElementById("lat-input");
+const lonInput = document.getElementById("lon-input");
+
+function setPin(lat, lon) {
+    latInput.value = lat.toFixed(6);
+    lonInput.value = lon.toFixed(6);
+    if (pinMarker) {
+        pinMarker.setLatLng([lat, lon]);
+    } else {
+        pinMarker = L.marker([lat, lon], { draggable: true })
+            .addTo(map)
+            .bindPopup("Pending report")
+            .openPopup();
+        pinMarker.on("dragend", () => {
+            const ll = pinMarker.getLatLng();
+            latInput.value = ll.lat.toFixed(6);
+            lonInput.value = ll.lng.toFixed(6);
+        });
+    }
+}
+
+map.on("click", e => setPin(e.latlng.lat, e.latlng.lng));
+
+// Sync manual coord edits to pin
+function syncPinFromInputs() {
+    const lat = parseFloat(latInput.value);
+    const lon = parseFloat(lonInput.value);
+    if (!isNaN(lat) && !isNaN(lon)) setPin(lat, lon);
+}
+latInput.addEventListener("change", syncPinFromInputs);
+lonInput.addEventListener("change", syncPinFromInputs);
+
+// ---------------------------------------------------------------------------
+// Score slider / number sync
+// ---------------------------------------------------------------------------
+const slider   = document.getElementById("score-slider");
+const scoreNum = document.getElementById("score-num");
+const sevBadge = document.getElementById("sev-badge");
+
+function updateSeverityBadge(val) {
+    if (val >= 70) {
+        sevBadge.textContent = "Severe";
+        sevBadge.className   = "severity-badge sev-severe";
+    } else if (val >= 40) {
+        sevBadge.textContent = "Moderate";
+        sevBadge.className   = "severity-badge sev-moderate";
+    } else {
+        sevBadge.textContent = "Minor";
+        sevBadge.className   = "severity-badge sev-minor";
+    }
+}
+
+slider.addEventListener("input", () => {
+    scoreNum.value = slider.value;
+    updateSeverityBadge(Number(slider.value));
+});
+scoreNum.addEventListener("input", () => {
+    const v = Math.max(1, Math.min(100, Number(scoreNum.value)));
+    slider.value = v;
+    updateSeverityBadge(v);
+});
+updateSeverityBadge(50);
+
+// ---------------------------------------------------------------------------
+// Timestamp default (now)
+// ---------------------------------------------------------------------------
+const tsInput = document.getElementById("ts-input");
+function setTsNow() {
+    const now = new Date();
+    now.setSeconds(0, 0);
+    tsInput.value = now.toISOString().slice(0, 16);
+}
+setTsNow();
+
+// ---------------------------------------------------------------------------
+// Load devices
+// ---------------------------------------------------------------------------
+const deviceSelect = document.getElementById("device-select");
+
+async function loadDevices() {
+    try {
+        const res  = await fetch("/api/sim/devices");
+        const devs = await res.json();
+        if (!devs.length) {
+            deviceSelect.innerHTML = `<option value="">No active devices — register one in Admin</option>`;
+            return;
+        }
+        deviceSelect.innerHTML = devs.map(d =>
+            `<option value="${d.id}">${d.label || `Device #${d.id}`}</option>`
+        ).join("");
+    } catch {
+        deviceSelect.innerHTML = `<option value="">Could not load devices</option>`;
+    }
+}
+loadDevices();
+
+// ---------------------------------------------------------------------------
+// Submit
+// ---------------------------------------------------------------------------
+const submitBtn    = document.getElementById("submit-btn");
+const submitNotice = document.getElementById("submit-notice");
+const logList      = document.getElementById("log-list");
+let logEmpty = true;
+
+function addLogEntry(text, type) {
+    if (logEmpty) {
+        logList.innerHTML = "";
+        logEmpty = false;
+    }
+    const el = document.createElement("div");
+    el.className = `log-entry log-${type}`;
+    el.innerHTML = text;
+    logList.prepend(el);
+    // Keep last 20
+    while (logList.children.length > 20) logList.removeChild(logList.lastChild);
+}
+
+function showNotice(msg, type) {
+    submitNotice.className = `notice ${type}`;
+    submitNotice.textContent = msg;
+    submitNotice.style.display = "block";
+    setTimeout(() => { submitNotice.style.display = "none"; }, 4000);
+}
+
+submitBtn.addEventListener("click", async () => {
+    const deviceId = deviceSelect.value;
+    const lat      = parseFloat(latInput.value);
+    const lon      = parseFloat(lonInput.value);
+    const score    = parseInt(scoreNum.value, 10);
+    const tsVal    = tsInput.value;
+
+    if (!deviceId) { showNotice("Select a device.", "err"); return; }
+    if (isNaN(lat) || isNaN(lon)) { showNotice("Click the map to set a location.", "err"); return; }
+    if (isNaN(score) || score < 1 || score > 100) { showNotice("Score must be 1–100.", "err"); return; }
+    if (!tsVal) { showNotice("Set a timestamp.", "err"); return; }
+
+    const timestamp = Math.floor(new Date(tsVal).getTime() / 1000);
+    const deviceLabel = deviceSelect.options[deviceSelect.selectedIndex].text;
+
+    submitBtn.disabled = true;
+    try {
+        const res  = await fetch("/api/simulate", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ device_id: Number(deviceId), latitude: lat, longitude: lon, score, timestamp }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+            if (data.accepted) {
+                showNotice("Report accepted.", "ok");
+                addLogEntry(
+                    `<strong>${deviceLabel}</strong> &mdash; score ${score} (${CraterWatch.severityLabel(score)})<br>` +
+                    `${lat.toFixed(5)}, ${lon.toFixed(5)} &middot; ${new Date(tsVal).toLocaleString()}`,
+                    "ok"
+                );
+                refreshPotholes();
+            } else {
+                showNotice("Spam-rejected (cooldown active for this device/cluster).", "warn");
+                addLogEntry(
+                    `<strong>${deviceLabel}</strong> &mdash; score ${score} &mdash; <em>spam rejected</em><br>` +
+                    `${lat.toFixed(5)}, ${lon.toFixed(5)}`,
+                    "warn"
+                );
+            }
+        } else {
+            const msg = data.error || `HTTP ${res.status}`;
+            showNotice(`Error: ${msg}`, "err");
+            addLogEntry(`Error: ${msg}`, "err");
+        }
+    } catch (e) {
+        showNotice("Could not reach server.", "err");
+        addLogEntry("Could not reach server.", "err");
+    } finally {
+        submitBtn.disabled = false;
+    }
+});
+</script>
+</body>
+</html>

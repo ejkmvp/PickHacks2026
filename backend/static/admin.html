@@ -232,6 +232,28 @@
         .popup-btn-fixed:hover { background: #bbf7d0; }
         .popup-btn-fp    { background: #fef3c7; color: #92400e; }
         .popup-btn-fp:hover    { background: #fde68a; }
+
+        /* ---- Device list ---- */
+        .device-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 0;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.82rem;
+        }
+        .device-row:last-child { border-bottom: none; }
+        .device-label { flex: 1; font-weight: 600; color: #1e293b; }
+        .device-meta  { color: #94a3b8; font-size: 0.75rem; }
+        .device-badge {
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 4px;
+            letter-spacing: 0.06em;
+        }
+        .badge-active   { background: #dcfce7; color: #166534; }
+        .badge-inactive { background: #f1f5f9; color: #94a3b8; }
     </style>
 </head>
 <body>
@@ -265,6 +287,11 @@
             <div id="settings-fields"><em style="font-size:0.82rem;color:#94a3b8">Loading…</em></div>
             <button class="btn btn-primary btn-block" id="settings-save">Save Changes</button>
             <div class="notice" id="settings-notice"></div>
+        </div>
+
+        <div class="card" id="devices-card">
+            <h2>Devices <button class="btn btn-primary" id="devices-refresh" style="float:right;padding:3px 10px;font-size:0.75rem">Refresh</button></h2>
+            <div id="devices-list"><em style="font-size:0.82rem;color:#94a3b8">Loading…</em></div>
         </div>
 
         <div class="card">
@@ -315,6 +342,7 @@ async function tryAuth(key) {
             authOverlay.style.display = "none";
             const data = await res.json();
             renderSettings(data);
+            loadDevices();
         } else {
             showAuthOverlay("Invalid key — please try again.");
         }
@@ -506,6 +534,37 @@ document.getElementById("settings-save").addEventListener("click", async () => {
         flash(notice, msg, e > 0);
     } catch { /* handled */ }
 });
+
+// ---------------------------------------------------------------------------
+// Device list
+// ---------------------------------------------------------------------------
+async function loadDevices() {
+    const container = document.getElementById("devices-list");
+    try {
+        const res = await adminFetch("/api/devices");
+        const devices = await res.json();
+        if (!devices.length) {
+            container.innerHTML = `<em style="font-size:0.82rem;color:#94a3b8">No devices registered.</em>`;
+            return;
+        }
+        container.innerHTML = devices.map(d => {
+            const label    = d.label || `Device #${d.id}`;
+            const date     = new Date(d.created_at * 1000).toLocaleDateString();
+            const badge    = d.is_active
+                ? `<span class="device-badge badge-active">ACTIVE</span>`
+                : `<span class="device-badge badge-inactive">INACTIVE</span>`;
+            return `<div class="device-row">
+                <div>
+                    <div class="device-label">${label}</div>
+                    <div class="device-meta">ID ${d.id} &middot; registered ${date}</div>
+                </div>
+                ${badge}
+            </div>`;
+        }).join("");
+    } catch { /* handled by adminFetch */ }
+}
+
+document.getElementById("devices-refresh").addEventListener("click", loadDevices);
 
 // ---------------------------------------------------------------------------
 // Device registration

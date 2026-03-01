@@ -4,15 +4,15 @@
 #define DEVICE_ID                   "ESP32_001"   // Unique per device
 
 // ─── WiFi ─────────────────────────────────────────────────────────────────────
-#define WIFI_SSID                   "your_ssid"
-#define WIFI_PASSWORD               "your_password"
+#define WIFI_SSID                   "TestStation"
+#define WIFI_PASSWORD               "esp32password"
 #define WIFI_RETRY_INTERVAL_MS      5000UL        // ms between reconnect attempts
 
 // ─── Server ───────────────────────────────────────────────────────────────────
-#define SERVER_BASE_URL             "https://your.server.com"
+#define SERVER_BASE_URL             "https://192.168.137.1"
 #define SERVER_TIME_ENDPOINT        "/api/time"       // GET → { "unix": 1234567890 }
 #define SERVER_REPORT_ENDPOINT      "/api/potholes"   // POST → JSON batch
-#define API_KEY                     "your_api_key_here"
+#define API_KEY                     "767aa98087416fc12491a1962c68ef91656249dc00c3646615140faab25a4c8f"
 
 // Root CA certificate for your server in PEM format.
 // Obtain it with: openssl s_client -connect your.server.com:443 -showcerts
@@ -24,11 +24,12 @@
 
 // ─── SPI / BNO086 Pins (VSPI: SCK=18, MISO=19, MOSI=23) ─────────────────────
 #define BNO_CS                      5     // Chip Select — change as needed
-#define BNO_INT                     4     // Interrupt   — change as needed
+#define BNO_INT                     22     // Interrupt   — change as needed
+#define BNO_RST                     2     
 // The WAKE pin is assumed tied on the breakout board; no software control needed.
 
 // ─── GPS Simulation ───────────────────────────────────────────────────────────
-#define GPS_SIM_BUTTON_PIN          0     // Change as needed; uses INPUT_PULLUP
+#define GPS_SIM_BUTTON_PIN          21     // Change as needed; uses INPUT_PULLUP
 #define GPS_SIM_INTERVAL_MS         2000UL
 
 // ─── Pothole Detection ────────────────────────────────────────────────────────
