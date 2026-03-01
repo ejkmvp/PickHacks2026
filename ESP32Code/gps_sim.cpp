@@ -22,7 +22,7 @@ void GpsSim::begin() {
 
 void GpsSim::update() {
     // Detect falling edge (button press, active LOW)
-    bool btn = digitalRead(GPS_SIM_BUTTON_PIN);
+    bool btn = !digitalRead(GPS_SIM_BUTTON_PIN); //NOTE - flipped here to make it active high
     if (_lastBtn == HIGH && btn == LOW) {
         if (!_active) {
             _active      = true;

@@ -25,7 +25,7 @@
 // ─── SPI / BNO086 Pins (VSPI: SCK=18, MISO=19, MOSI=23) ─────────────────────
 #define BNO_CS                      5     // Chip Select — change as needed
 #define BNO_INT                     22     // Interrupt   — change as needed
-#define BNO_RST                     2     
+#define BNO_RST                     13    
 // The WAKE pin is assumed tied on the breakout board; no software control needed.
 
 // ─── GPS Simulation ───────────────────────────────────────────────────────────
@@ -59,6 +59,13 @@
 #define IMU_ACCEL_INTERVAL_MS       10    // 100 Hz
 // BNO086 report interval for gravity vector (ms). Tilt changes slowly.
 #define IMU_GRAVITY_INTERVAL_MS     50    // 20 Hz
+
+// ─── Pothole Indicator LED ────────────────────────────────────────────────────
+// GPIO 2 has a built-in LED on most ESP32 dev boards (HIGH = on).
+#define LED_PIN                     2
+// Flash duration range (ms): score 1 → MIN, score 100 → MAX
+#define LED_FLASH_MIN_MS            200UL
+#define LED_FLASH_MAX_MS            2000UL
 
 // ─── Event Buffer ─────────────────────────────────────────────────────────────
 #define BUFFER_SIZE                 64

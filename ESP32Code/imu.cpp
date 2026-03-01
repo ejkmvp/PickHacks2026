@@ -19,6 +19,9 @@ static BNO08x _bno;
 ImuSensor imu;
 
 bool ImuSensor::begin() {
+    pinMode(LED_PIN, OUTPUT);
+    digitalWrite(LED_PIN, LOW);
+
     SPI.begin();   // VSPI defaults: SCK=18, MISO=19, MOSI=23
     if (!_bno.beginSPI(BNO_CS, BNO_INT, BNO_RST)) {
         Serial.println("[IMU] BNO086 not found — check wiring and pin constants");
@@ -58,6 +61,12 @@ uint8_t ImuSensor::computeScore(float peakDown, float peakUp) const {
 
 void ImuSensor::update(EventBuffer& buffer, float lat, float lon) {
     if (_bno.wasReset()) setupReports();
+
+    // LED timeout check
+    if (_ledOffAt && millis() >= _ledOffAt) {
+        digitalWrite(LED_PIN, LOW);
+        _ledOffAt = 0;
+    }
 
     while (_bno.getSensorEvent()) {
 
@@ -135,6 +144,12 @@ void ImuSensor::update(EventBuffer& buffer, float lat, float lon) {
                             Serial.printf("[IMU] Pothole detected! Score=%d lat=%.6f lon=%.6f %s\n",
                                           event.score, lat, lon,
                                           stored ? "" : "(buffer full, dropped)");
+
+                            uint32_t flashMs = LED_FLASH_MIN_MS +
+                                (uint32_t)((LED_FLASH_MAX_MS - LED_FLASH_MIN_MS) *
+                                           (event.score - 1) / 99);
+                            digitalWrite(LED_PIN, HIGH);
+                            _ledOffAt = millis() + flashMs;
 
                             _cooldownStart = millis();
                             _dState        = DetectState::COOLDOWN;

@@ -32,6 +32,9 @@ private:
     // Freefall tracking
     bool     _inFreefall    = false;
     uint32_t _freefallStart = 0;
+
+    // LED indicator: millis() value at which to turn the LED off (0 = off)
+    uint32_t _ledOffAt = 0;
 };
 
 extern ImuSensor imu;
