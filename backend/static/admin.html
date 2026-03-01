@@ -416,7 +416,7 @@ window.cwMarkFP = async (id) => {
     if (!confirm("Mark as false positive? Scoring weights will be nudged.")) return;
     try {
         const res = await adminFetch(`/api/potholes/${id}/false-positive`, { method: "POST" });
-        if (res.ok) removeMarkerById(id);
+        if (res.ok) { removeMarkerById(id); refresh(); }
     } catch { /* handled by adminFetch */ }
 };
 
@@ -532,6 +532,9 @@ document.getElementById("settings-save").addEventListener("click", async () => {
             ? `${n} saved, ${e} error(s): ${Object.keys(data.errors).join(", ")}`
             : `${n} setting${n !== 1 ? "s" : ""} saved.`;
         flash(notice, msg, e > 0);
+        if (Object.keys(data.updated).some(k => k.startsWith("score_w_") || k === "score_decay_lambda")) {
+            refresh();
+        }
     } catch { /* handled */ }
 });
 
