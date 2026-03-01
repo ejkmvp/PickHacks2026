@@ -8,8 +8,9 @@
 ServerClient serverClient;
 
 void ServerClient::update(EventBuffer& buffer) {
-    if (!wifiManager.connected()) return;
-    if (buffer.empty())           return;
+    if (!wifiManager.connected())  return;
+    if (!wifiManager.timeSynced()) return;
+    if (buffer.empty())            return;
     if (millis() - _lastAttempt < REPORT_INTERVAL_MS) return;
 
     _lastAttempt = millis();
@@ -42,9 +43,9 @@ bool ServerClient::sendBatch(EventBuffer& buffer) {
 
     // ── HTTPS POST ────────────────────────────────────────────────────────────
     WiFiClientSecure client;
-    client.setCACert(SERVER_ROOT_CA);
+    //client.setCACert(SERVER_ROOT_CA); TODO maybe try to get the CERT working
     // For local testing without a valid cert, comment the line above and uncomment:
-    // client.setInsecure();
+     client.setInsecure();
 
     HTTPClient https;
     String url = String(SERVER_BASE_URL) + SERVER_REPORT_ENDPOINT;

@@ -43,6 +43,8 @@ void WifiManager::update() {
                 _state       = WifiState::DISCONNECTED;
                 _lastAttempt = millis();
                 Serial.println("[WiFi] Connection lost");
+            } else if (!_timeSynced && millis() - _lastSyncAttempt >= WIFI_RETRY_INTERVAL_MS) {
+                syncTime();
             }
             break;
     }
@@ -60,10 +62,11 @@ void WifiManager::startConnect() {
 }
 
 void WifiManager::syncTime() {
+    _lastSyncAttempt = millis();
     WiFiClientSecure client;
-    client.setCACert(SERVER_ROOT_CA);
+    //client.setCACert(SERVER_ROOT_CA);
     // For local testing without a valid cert, comment the line above and uncomment:
-    // client.setInsecure();
+    client.setInsecure();
 
     HTTPClient https;
     String url = String(SERVER_BASE_URL) + SERVER_TIME_ENDPOINT;

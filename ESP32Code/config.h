@@ -9,7 +9,7 @@
 #define WIFI_RETRY_INTERVAL_MS      5000UL        // ms between reconnect attempts
 
 // ─── Server ───────────────────────────────────────────────────────────────────
-#define SERVER_BASE_URL             "https://192.168.137.1"
+#define SERVER_BASE_URL             "https://192.168.137.1:5000"
 #define SERVER_TIME_ENDPOINT        "/api/time"       // GET → { "unix": 1234567890 }
 #define SERVER_REPORT_ENDPOINT      "/api/potholes"   // POST → JSON batch
 #define API_KEY                     "767aa98087416fc12491a1962c68ef91656249dc00c3646615140faab25a4c8f"
@@ -25,7 +25,7 @@
 // ─── SPI / BNO086 Pins (VSPI: SCK=18, MISO=19, MOSI=23) ─────────────────────
 #define BNO_CS                      5     // Chip Select — change as needed
 #define BNO_INT                     22     // Interrupt   — change as needed
-#define BNO_RST                     13    
+#define BNO_RST                     4    
 // The WAKE pin is assumed tied on the breakout board; no software control needed.
 
 // ─── GPS Simulation ───────────────────────────────────────────────────────────

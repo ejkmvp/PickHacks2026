@@ -18,9 +18,10 @@ private:
     void startConnect();
     void syncTime();
 
-    WifiState _state       = WifiState::DISCONNECTED;
-    uint32_t  _lastAttempt = 0;
-    bool      _timeSynced  = false;
+    WifiState _state           = WifiState::DISCONNECTED;
+    uint32_t  _lastAttempt     = 0;
+    bool      _timeSynced      = false;
+    uint32_t  _lastSyncAttempt = 0;
 };
 
 extern WifiManager wifiManager;

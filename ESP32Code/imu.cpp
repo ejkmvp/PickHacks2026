@@ -33,8 +33,10 @@ bool ImuSensor::begin() {
 }
 
 void ImuSensor::setupReports() {
-    _bno.enableLinearAccelerometer(IMU_ACCEL_INTERVAL_MS);
-    _bno.enableGravity(IMU_GRAVITY_INTERVAL_MS);
+    if (!_bno.enableLinearAccelerometer(IMU_ACCEL_INTERVAL_MS))
+        Serial.println("[IMU] enableLinearAccelerometer failed");
+    if (!_bno.enableGravity(IMU_GRAVITY_INTERVAL_MS))
+        Serial.println("[IMU] enableGravity failed");
 }
 
 bool ImuSensor::isTilted() const {
@@ -69,11 +71,13 @@ void ImuSensor::update(EventBuffer& buffer, float lat, float lon) {
     }
 
     while (_bno.getSensorEvent()) {
-
-        switch (_bno.getSensorEventID()) {
+        uint8_t eventId = _bno.getSensorEventID();
+        //Serial.printf("Received event with ID %d\n", eventId);
+        switch (eventId) {
 
             // ── Update gravity vector (used for tilt and axis projection) ───
             case SH2_GRAVITY:
+                //Serial.println("Received gravity");
                 _gravX = _bno.getGravityX();
                 _gravY = _bno.getGravityY();
                 _gravZ = _bno.getGravityZ();
@@ -81,6 +85,7 @@ void ImuSensor::update(EventBuffer& buffer, float lat, float lon) {
 
             // ── Pothole detection ───────────────────────────────────────────
             case SH2_LINEAR_ACCELERATION: {
+                //Serial.println("Received Lin Accel");
                 float ax = _bno.getLinAccelX();
                 float ay = _bno.getLinAccelY();
                 float az = _bno.getLinAccelZ();

@@ -4,13 +4,15 @@
 #include "imu.h"
 #include "gps_sim.h"
 #include "server_client.h"
+#include <esp_system.h>
 
 EventBuffer eventBuffer;
 
 void setup() {
     Serial.begin(115200);
-    delay(500);
+    delay(2000);
     Serial.println("[Boot] PickHacks2026 Pothole Detector");
+    Serial.printf("[Boot] Reset reason: %d\n", esp_reset_reason());
 
     gpsSim.begin();
     wifiManager.begin();
