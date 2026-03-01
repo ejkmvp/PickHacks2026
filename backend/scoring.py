@@ -134,12 +134,25 @@ def apply_false_positive_nudge(cluster_id, conn):
 
     _FIXED_WEIGHTS = {"score_w_avg_severity"}
 
-    for key, new_val in zip(_WEIGHT_KEYS, new_weights):
-        if key in _FIXED_WEIGHTS:
-            continue
+    # Fixed weights stay at their current values; non-fixed weights are nudged
+    # then rescaled so all weights sum to 1.0.
+    fixed_sum = sum(w for k, w in zip(_WEIGHT_KEYS, weights) if k in _FIXED_WEIGHTS)
+    target_sum = 1.0 - fixed_sum
+
+    nudged = [(k, nw) for k, nw in zip(_WEIGHT_KEYS, new_weights) if k not in _FIXED_WEIGHTS]
+    nudged_sum = sum(nw for _, nw in nudged)
+
+    if nudged_sum > 1e-9:
+        scaled = [(k, nw * target_sum / nudged_sum) for k, nw in nudged]
+    else:
+        # Distribute evenly if all weights collapsed to near zero
+        even = target_sum / len(nudged)
+        scaled = [(k, even) for k, _ in nudged]
+
+    for key, val in scaled:
         conn.execute(
             "INSERT OR REPLACE INTO settings(key, value) VALUES (?, ?)",
-            (key, str(new_val)),
+            (key, str(val)),
         )
     conn.commit()
     invalidate_settings_cache(conn)

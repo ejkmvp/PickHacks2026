@@ -93,7 +93,8 @@ SETTINGS = {
     "score_w_consistency":      0.3,
     "score_w_recency":          0.06,
     "score_w_total_reports":    0.06,
-    "score_w_unique_reporters": 0.07
+    "score_w_unique_reporters": 0.07,
+    "learning_rate":            0.1
 }
 
 # ---------------------------------------------------------------------------

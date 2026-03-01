@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CraterWatch — Admin</title>
+    <title>GridSense — Admin</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -261,7 +261,7 @@
 <!-- Auth overlay -->
 <div id="auth-overlay">
     <div id="auth-card">
-        <h2>CraterWatch Admin</h2>
+        <h2>GridSense Admin</h2>
         <p>Enter your admin API key to continue.</p>
         <input type="password" id="auth-key" placeholder="Admin API key" autocomplete="off" />
         <div id="auth-error"></div>
@@ -270,7 +270,7 @@
 </div>
 
 <div id="header">
-    <h1>CraterWatch</h1>
+    <h1>GridSense</h1>
     <span class="admin-badge">ADMIN</span>
     <button id="panel-toggle">Panel &#9656;</button>
 </div>
@@ -416,7 +416,12 @@ window.cwMarkFP = async (id) => {
     if (!confirm("Mark as false positive? Scoring weights will be nudged.")) return;
     try {
         const res = await adminFetch(`/api/potholes/${id}/false-positive`, { method: "POST" });
-        if (res.ok) { removeMarkerById(id); refresh(); }
+        if (res.ok) {
+            removeMarkerById(id);
+            refresh();
+            const settingsRes = await adminFetch("/api/settings");
+            if (settingsRes.ok) renderSettings(await settingsRes.json());
+        }
     } catch { /* handled by adminFetch */ }
 };
 
