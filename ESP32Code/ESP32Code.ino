@@ -28,4 +28,5 @@ void loop() {
     gpsSim.update();
     imu.update(eventBuffer, gpsSim.latitude(), gpsSim.longitude());
     serverClient.update(eventBuffer);
+    Serial.flush();
 }

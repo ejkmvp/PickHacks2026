@@ -70,7 +70,7 @@ void ImuSensor::update(EventBuffer& buffer, float lat, float lon) {
         _ledOffAt = 0;
     }
 
-    while (_bno.getSensorEvent()) {
+    for (int eventsRead = 0; eventsRead < 10 && _bno.getSensorEvent(); eventsRead++) {
         uint8_t eventId = _bno.getSensorEventID();
         //Serial.printf("Received event with ID %d\n", eventId);
         switch (eventId) {
