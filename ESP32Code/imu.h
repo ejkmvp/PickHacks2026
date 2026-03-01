@@ -20,7 +20,7 @@ private:
     float _gravX = 0.0f, _gravY = 0.0f, _gravZ = -9.81f;
 
     // ── Pothole detection state machine ──────────────────────────────────────
-    enum class DetectState { IDLE, DETECTING, COOLDOWN };
+    enum class DetectState { IDLE, IMPACT, REBOUND, COOLDOWN };
     DetectState _dState = DetectState::IDLE;
 
     uint32_t _eventStart    = 0;

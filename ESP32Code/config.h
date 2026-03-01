@@ -42,7 +42,10 @@
 #define POTHOLE_POS_THRESHOLD       6.0f
 // Acceleration magnitude (average of peaks) that maps to a score of 100
 #define POTHOLE_SEVERE_ACCEL        25.0f
-// Maximum time (ms) between initial drop and confirmed impact
+// Maximum time (ms) the downward spike may last before the event is cancelled
+// (a real pothole impact is brief; a slow push-off or hop lasts much longer)
+#define POTHOLE_IMPACT_MAX_MS       150UL
+// Maximum total time (ms) from IMPACT start to REBOUND confirmation
 #define POTHOLE_MAX_DURATION_MS     350UL
 // Minimum time (ms) between consecutive recorded events (prevents double-counting)
 #define POTHOLE_COOLDOWN_MS         1500UL

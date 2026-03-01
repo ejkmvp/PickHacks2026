@@ -111,31 +111,51 @@ void ImuSensor::update(EventBuffer& buffer, float lat, float lon) {
                 // ── State machine ─────────────────────────────────────────
                 switch (_dState) {
 
+                    // ── Phase 1: wait for a downward spike ────────────────
                     case DetectState::IDLE:
-                        // Trigger: downward spike above threshold, device upright
-                        if (!isTilted() && vertAccel > POTHOLE_NEG_THRESHOLD) {
-                            _dState     = DetectState::DETECTING;
+                        // Freefall precondition: block triggers from mid-air
+                        // (handles landing-from-hop and dropped-device scenarios)
+                        if (!isTilted() && !_inFreefall &&
+                            vertAccel > POTHOLE_NEG_THRESHOLD) {
+                            _dState     = DetectState::IMPACT;
                             _eventStart = millis();
                             _peakDown   = vertAccel;
                             _peakUp     = 0.0f;
-                            _inFreefall = false;
                         }
                         break;
 
-                    case DetectState::DETECTING: {
-                        // Track peaks
-                        if (vertAccel  >  _peakDown) _peakDown = vertAccel;
-                        if (-vertAccel > _peakUp)    _peakUp   = -vertAccel;
+                    // ── Phase 2: ride out the downward spike ──────────────
+                    case DetectState::IMPACT:
+                        // Any freefall during the spike means no road contact — cancel
+                        if (_inFreefall) { _dState = DetectState::IDLE; break; }
 
-                        // Freefall disqualification: sustained weightlessness
-                        // means the device left the ground (jump), not a pothole.
+                        if (vertAccel > _peakDown) _peakDown = vertAccel;
+
+                        // Spike has cleared — move to looking for the rebound
+                        if (vertAccel < POTHOLE_NEG_THRESHOLD * 0.5f) {
+                            _dState     = DetectState::REBOUND;
+                            _inFreefall = false;   // fresh freefall window for rebound
+                            break;
+                        }
+
+                        // Spike lasted too long — hop push-off or other slow motion
+                        if (millis() - _eventStart > POTHOLE_IMPACT_MAX_MS) {
+                            _dState = DetectState::IDLE;
+                        }
+                        break;
+
+                    // ── Phase 3: wait for the upward rebound ──────────────
+                    case DetectState::REBOUND: {
+                        if (-vertAccel > _peakUp) _peakUp = -vertAccel;
+
+                        // Sustained freefall during rebound = jump, not pothole
                         if (_inFreefall &&
-                            (millis() - _freefallStart >= FREEFALL_DISQUALIFY_MS)) {
+                            millis() - _freefallStart >= FREEFALL_DISQUALIFY_MS) {
                             _dState = DetectState::IDLE;
                             break;
                         }
 
-                        // Confirm: upward impact spike after the initial drop
+                        // Confirm: upward spike reached threshold
                         if (_peakUp >= POTHOLE_POS_THRESHOLD) {
                             PotholeEvent event;
                             event.score     = computeScore(_peakDown, _peakUp);
@@ -161,7 +181,7 @@ void ImuSensor::update(EventBuffer& buffer, float lat, float lon) {
                             break;
                         }
 
-                        // Event window expired — not a pothole pattern
+                        // Total event budget expired
                         if (millis() - _eventStart > POTHOLE_MAX_DURATION_MS) {
                             _dState = DetectState::IDLE;
                         }

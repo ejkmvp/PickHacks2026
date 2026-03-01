@@ -22,7 +22,7 @@ private:
     bool     _active      = false;
     int      _idx         = 0;
     uint32_t _lastAdvance = 0;
-    bool     _lastBtn     = HIGH;   // pulled HIGH; active LOW
+    bool     _lastBtn     = LOW;   // pulled HIGH; active LOW
 
     static const GpsPoint _path[];
     static const int      _pathLen;
