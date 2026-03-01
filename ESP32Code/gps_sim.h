@@ -14,8 +14,8 @@ public:
     void  begin();
     void  update();
 
-    float latitude()  const { return _active ? _path[_idx].latitude  : 0.0f; }
-    float longitude() const { return _active ? _path[_idx].longitude : 0.0f; }
+    float latitude()  const { return _active ? _path[_idx].latitude  : 37.9523219f; } //37.952321953778046, -91.77101438903269
+    float longitude() const { return _active ? _path[_idx].longitude : -91.771014f; }
     bool  active()    const { return _active; }
 
 private:

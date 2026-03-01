@@ -37,26 +37,37 @@
 // Positive = toward ground, negative = away from ground.
 
 // Downward acceleration that begins an event detection window
-#define POTHOLE_NEG_THRESHOLD       4.0f
+#define POTHOLE_NEG_THRESHOLD       3.0f
 // Upward acceleration that confirms a pothole impact
-#define POTHOLE_POS_THRESHOLD       6.0f
+#define POTHOLE_POS_THRESHOLD       4.0f
 // Acceleration magnitude (average of peaks) that maps to a score of 100
 #define POTHOLE_SEVERE_ACCEL        25.0f
 // Maximum time (ms) the downward spike may last before the event is cancelled
 // (a real pothole impact is brief; a slow push-off or hop lasts much longer)
-#define POTHOLE_IMPACT_MAX_MS       150UL
+#define POTHOLE_IMPACT_MAX_MS       200UL
 // Maximum total time (ms) from IMPACT start to REBOUND confirmation
-#define POTHOLE_MAX_DURATION_MS     350UL
+#define POTHOLE_MAX_DURATION_MS     400UL
 // Minimum time (ms) between consecutive recorded events (prevents double-counting)
 #define POTHOLE_COOLDOWN_MS         1500UL
+// Acceptable ratio of rebound impulse to impact impulse.
+// A pothole returns the sensor to roughly the same level (ratio near 1.0).
+// Jumping off a curb produces a large impact with little rebound (ratio << 1).
+// Jumping onto a curb produces a small impact with large rebound (ratio >> 1).
+#define POTHOLE_IMPULSE_RATIO_MIN   0.5f
+#define POTHOLE_IMPULSE_RATIO_MAX   2.0f
 
 // Device tilt beyond this angle (degrees from vertical) disables detection
-#define TILT_LOCKOUT_DEGREES        45.0f
+#define TILT_LOCKOUT_DEGREES        30.0f
 
-// Linear acceleration magnitude (m/s²) below which freefall is assumed
-#define FREEFALL_THRESHOLD          1.5f
+// Linear acceleration magnitude (m/s²) below which freefall is assumed.
+// Keep this low so normal road vibration (brief low-accel moments) doesn't
+// falsely trigger freefall and block pothole detection via FREEFALL_REARM_MS.
+#define FREEFALL_THRESHOLD          0.8f
 // If freefall persists this long (ms), the event is cancelled (e.g., jumping off a ledge)
 #define FREEFALL_DISQUALIFY_MS      120UL
+// Time (ms) after freefall ends before a new pothole trigger is allowed.
+// Prevents the landing impact from being misread as a pothole.
+#define FREEFALL_REARM_MS           150UL
 
 // BNO086 report interval for linear acceleration (ms). Lower = more responsive.
 #define IMU_ACCEL_INTERVAL_MS       10    // 100 Hz

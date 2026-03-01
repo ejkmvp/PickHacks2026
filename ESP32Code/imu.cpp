@@ -105,6 +105,7 @@ void ImuSensor::update(EventBuffer& buffer, float lat, float lon) {
                         _freefallStart = millis();
                     }
                 } else {
+                    if (_inFreefall) _freefallEndedAt = millis();
                     _inFreefall = false;
                 }
 
@@ -113,14 +114,17 @@ void ImuSensor::update(EventBuffer& buffer, float lat, float lon) {
 
                     // ── Phase 1: wait for a downward spike ────────────────
                     case DetectState::IDLE:
-                        // Freefall precondition: block triggers from mid-air
-                        // (handles landing-from-hop and dropped-device scenarios)
+                        // Freefall precondition: block triggers from mid-air or
+                        // immediately after landing (same-sample clearing problem).
                         if (!isTilted() && !_inFreefall &&
+                            millis() - _freefallEndedAt >= FREEFALL_REARM_MS &&
                             vertAccel > POTHOLE_NEG_THRESHOLD) {
-                            _dState     = DetectState::IMPACT;
-                            _eventStart = millis();
-                            _peakDown   = vertAccel;
-                            _peakUp     = 0.0f;
+                            _dState      = DetectState::IMPACT;
+                            _eventStart  = millis();
+                            _peakDown    = vertAccel;
+                            _peakUp      = 0.0f;
+                            _impactSum   = 0.0f;
+                            _reboundSum  = 0.0f;
                         }
                         break;
 
@@ -130,6 +134,7 @@ void ImuSensor::update(EventBuffer& buffer, float lat, float lon) {
                         if (_inFreefall) { _dState = DetectState::IDLE; break; }
 
                         if (vertAccel > _peakDown) _peakDown = vertAccel;
+                        _impactSum += vertAccel;
 
                         // Spike has cleared — move to looking for the rebound
                         if (vertAccel < POTHOLE_NEG_THRESHOLD * 0.5f) {
@@ -147,6 +152,7 @@ void ImuSensor::update(EventBuffer& buffer, float lat, float lon) {
                     // ── Phase 3: wait for the upward rebound ──────────────
                     case DetectState::REBOUND: {
                         if (-vertAccel > _peakUp) _peakUp = -vertAccel;
+                        _reboundSum -= vertAccel;
 
                         // Sustained freefall during rebound = jump, not pothole
                         if (_inFreefall &&
@@ -155,8 +161,11 @@ void ImuSensor::update(EventBuffer& buffer, float lat, float lon) {
                             break;
                         }
 
-                        // Confirm: upward spike reached threshold
-                        if (_peakUp >= POTHOLE_POS_THRESHOLD) {
+                        // Confirm: upward spike reached threshold AND impulse is balanced
+                        if (_peakUp >= POTHOLE_POS_THRESHOLD &&
+                            _impactSum > 0.0f && _reboundSum > 0.0f &&
+                            _reboundSum / _impactSum >= POTHOLE_IMPULSE_RATIO_MIN &&
+                            _reboundSum / _impactSum <= POTHOLE_IMPULSE_RATIO_MAX) {
                             PotholeEvent event;
                             event.score     = computeScore(_peakDown, _peakUp);
                             event.latitude  = lat;

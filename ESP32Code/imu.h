@@ -26,12 +26,15 @@ private:
     uint32_t _eventStart    = 0;
     uint32_t _cooldownStart = 0;
 
-    float    _peakDown = 0.0f;   // max downward vertical accel (positive, m/s²)
-    float    _peakUp   = 0.0f;   // max upward vertical accel magnitude (positive, m/s²)
+    float    _peakDown   = 0.0f;   // max downward vertical accel (positive, m/s²)
+    float    _peakUp     = 0.0f;   // max upward vertical accel magnitude (positive, m/s²)
+    float    _impactSum  = 0.0f;   // impulse accumulator for IMPACT phase
+    float    _reboundSum = 0.0f;   // impulse accumulator for REBOUND phase
 
     // Freefall tracking
-    bool     _inFreefall    = false;
-    uint32_t _freefallStart = 0;
+    bool     _inFreefall     = false;
+    uint32_t _freefallStart  = 0;
+    uint32_t _freefallEndedAt = 0;  // millis() when freefall last cleared
 
     // LED indicator: millis() value at which to turn the LED off (0 = off)
     uint32_t _ledOffAt = 0;
